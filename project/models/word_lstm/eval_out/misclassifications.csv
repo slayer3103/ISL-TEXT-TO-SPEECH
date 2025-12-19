@@ -1,0 +1,13 @@
+npz,true_label,pred_label,pred_prob
+data\word_sequences_ready\again\p01_Again_var0484_20251108T144458_seq.npz,again,hello,0.4185
+data\word_sequences_ready\again\p01_Again_var0492_20251108T144537_seq.npz,again,language,0.9438
+data\word_sequences_ready\bye\p01_Bye_var0354_20251108T142552_seq.npz,bye,again,0.4115
+data\word_sequences_ready\bye\p01_Bye_var0371_20251108T142634_seq.npz,bye,hello,0.6196
+data\word_sequences_ready\bye\p01_Bye_var0377_20251108T142649_seq.npz,bye,hello,0.8690
+data\word_sequences_ready\bye\p01_Bye_var0379_20251108T142654_seq.npz,bye,hello,0.7283
+data\word_sequences_ready\bye\p01_Bye_var0403_20251108T142759_seq.npz,bye,hello,0.9792
+data\word_sequences_ready\bye\p01_Bye_var0405_20251108T142804_seq.npz,bye,hello,0.8365
+data\word_sequences_ready\hello\p01_hello_var0082_20251108T134227_seq.npz,hello,bye,0.6845
+data\word_sequences_ready\language\p01_Language_var0309_20251108T141846_seq.npz,language,sign,0.8006
+data\word_sequences_ready\sign\p01_Sign_var0163_20251108T140623_seq.npz,sign,again,0.3666
+data\word_sequences_ready\sign\p01_Sign_var0181_20251108T140715_seq.npz,sign,language,0.6904
