@@ -1,14 +1,9 @@
-#!/usr/bin/env python3
+
 """
-app_isl.py - inference & collection tool for landmark MLP.
 
-Run example:
-  python scripts/app_isl.py --mode infer --model_path models/landmark_model/final_model.pt --scaler_path models/landmark_model/scaler_and_map.joblib --device cuda --prob_thresh 0.6
+run unsing
+  python scripts/app_isl.py --mode infer --model_path models/landmark_model/final_model.pt --scaler_path models/landmark_model/scaler_and_map.joblib
 
-Notes:
-- This version implements a simple guard: if neither hand is present we return <BLANK>.
-- Low-confidence predictions (prob < --prob_thresh) report <UNK>.
-- We keep the model input dimension unchanged so existing checkpoints continue to work.
 """
 
 import sys
@@ -41,7 +36,6 @@ def load_model_and_scaler(model_path, scaler_path, device):
             mean = info.get("mean")
         if std is None:
             std = info.get("std")
-    # convert mean/std to numpy arrays
     return model_state, np.array(mean, dtype=np.float32), np.array(std, dtype=np.float32), labels_map
 
 
@@ -67,12 +61,6 @@ def build_model(input_dim, hidden_dims, num_classes, device, dropout=0.4):
 
 
 def extract_lr_landmarks(results):
-    """
-    Returns:
-      feat (np.array shape (84,))  -> left(42) + right(42)
-      left_p (0/1)
-      right_p (0/1)
-    """
     left = [0.0] * 42
     right = [0.0] * 42
     left_p = 0
@@ -93,6 +81,7 @@ def extract_lr_landmarks(results):
 
     feat = np.array(left + right, dtype=np.float32)
     return feat, left_p, right_p
+
 
 
 def main(args):
@@ -117,8 +106,10 @@ def main(args):
     csv_file = None
     csv_writer = None
     if args.mode == "collect":
+        # open CSV for appending
         csv_file = open(args.out_csv, "a", newline="", encoding="utf-8")
         csv_writer = csv.writer(csv_file)
+        # write header if empty
         if os.stat(args.out_csv).st_size == 0:
             header = ["label"] + [f"x{i}" for i in range(84)]
             csv_writer.writerow(header)
@@ -131,14 +122,14 @@ def main(args):
     inv_labels = None
     if args.mode == "infer":
         model_state, mean, std, labels_map = load_model_and_scaler(args.model_path, args.scaler_path, device)
-        inv_labels = {v: k for k, v in labels_map.items()} if labels_map is not None else None
-        # we expect 84-d input (left+right); keep compatibility with old models
+        inv_labels = {v: k for k, v in labels_map.items()}
         model = build_model(84, args.hidden_dims or [256,128], len(labels_map), device, dropout=args.dropout)
         model.load_state_dict(model_state)
         model.eval()
         print("Loaded model, classes:", labels_map)
 
     print("Press 'q' to quit. In collect mode, press 'c' to capture current frame as sample.")
+
     frame_idx = 0
     while True:
         ret, frame = cap.read()
@@ -157,38 +148,33 @@ def main(args):
                 mp.solutions.drawing_utils.draw_landmarks(img, h, mp_h.HAND_CONNECTIONS)
 
         if args.mode == "infer":
-            # Inference guard: if no hands present, emit <BLANK> and skip model
-            if lp == 0 and rp == 0:
-                display = "<BLANK>"
-            else:
-                # Normalize using mean/std (loaded from scaler)
-                x = (feat - mean) / std
-                x_t = torch.from_numpy(x.astype(np.float32)).unsqueeze(0).to(device)
-                with torch.no_grad():
-                    logits = model(x_t)
-                    probs = torch.softmax(logits, dim=1).cpu().numpy()[0]
-                best = int(np.argmax(probs))
-                prob = float(probs[best])
-                label = inv_labels.get(best, str(best)) if inv_labels else str(best)
-                # Probability thresholding: if confidences are low, mark as unknown
-                if prob < args.prob_thresh:
-                    display = f"<UNK> ({prob:.2f})"
-                else:
-                    display = f"{label} ({prob:.2f})"
-
+            # inference
+            x = (feat - mean) / std
+            x_t = torch.from_numpy(x.astype(np.float32)).unsqueeze(0).to(device)
+            with torch.no_grad():
+                logits = model(x_t)
+                probs = torch.softmax(logits, dim=1).cpu().numpy()[0]
+            best = int(np.argmax(probs))
+            prob = float(probs[best])
+            label = inv_labels.get(best, str(best))
+            display = f"{label} ({prob:.2f})"
             cv2.putText(img, display, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,255,0), 2)
 
         elif args.mode == "collect":
+            # show label to collect
             cv2.putText(img, f"Collecting: {args.collect_label}", (10,30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255,0,0), 2)
 
         cv2.imshow("ISL App", img)
+
         key = cv2.waitKey(1) & 0xFF
         if key == ord("q") or key == 27:
             break
         if args.mode == "collect" and key == ord("c"):
+            # write feature with label
             if csv_writer:
                 csv_writer.writerow([args.collect_label] + feat.tolist())
                 print("Saved sample for", args.collect_label)
+        # you can add further key controls if needed (pause, next label etc.)
 
     if csv_file:
         csv_file.close()
@@ -203,7 +189,6 @@ if __name__ == "__main__":
     parser.add_argument("--camera_idx", type=int, default=0)
     parser.add_argument("--min_det", type=float, default=0.5)
     parser.add_argument("--device", choices=["cpu", "cuda"], default="cpu", help="Device to run inference on")
-    parser.add_argument("--prob_thresh", type=float, default=0.6, help="Min probability to accept a class; otherwise <UNK>")
     # For inference mode
     parser.add_argument("--model_path", help="path to PyTorch model .pt")
     parser.add_argument("--scaler_path", help="joblib scaler_and_map")
@@ -212,5 +197,6 @@ if __name__ == "__main__":
     # For collection mode
     parser.add_argument("--out_csv", help="CSV file to append collected keypoints")
     parser.add_argument("--collect_label", help="Label to assign samples in collect mode")
+
     args = parser.parse_args()
     main(args)
