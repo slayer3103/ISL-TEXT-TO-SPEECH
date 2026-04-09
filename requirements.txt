@@ -1,0 +1,26 @@
+# Core
+numpy==1.24.4
+pandas==2.0.3
+
+# Computer Vision
+opencv-python==4.8.1.78
+mediapipe==0.10.9
+
+# Machine Learning
+scikit-learn==1.3.2
+joblib==1.3.2
+
+# DL
+tensorflow==2.13.0
+
+# Text-to-Speech
+pyttsx3==2.90
+
+# Utilities
+tqdm==4.66.1
+
+
+matplotlib==3.7.2
+
+
+flask==2.3.3
